@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Xml.Linq;
@@ -11,6 +12,7 @@ using DefaultDocumentation.Model;
 using DefaultDocumentation.Model.Member;
 using DefaultDocumentation.Model.Parameter;
 using DefaultDocumentation.Model.Type;
+using Fluid;
 using ICSharpCode.Decompiler.Documentation;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.Decompiler.TypeSystem.Implementation;
@@ -21,6 +23,9 @@ namespace DefaultDocumentation.Writer
     {
         private readonly ConcurrentDictionary<string, string> _urls;
         private readonly StringBuilder _builder;
+        private readonly Func<IFluidTemplate> _templateFactory;
+        private readonly IFluidTemplate _template;
+        private readonly TemplateOptions _templateOptions;
         private readonly Func<DocItem, string> _urlFactory;
 
         public MarkdownWriter(Settings settings)
@@ -28,6 +33,12 @@ namespace DefaultDocumentation.Writer
         {
             _urls = new ConcurrentDictionary<string, string>();
             _builder = new StringBuilder();
+            _template = new FluidParser().Parse(File.ReadAllText(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "DefaultTemplate.txt"), Encoding.UTF8));
+            _templateOptions = new TemplateOptions
+            {
+                MemberAccessStrategy = new UnsafeMemberAccessStrategy()
+            };
+            _templateFactory = () => new FluidParser().Parse(File.ReadAllText(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "DefaultTemplate.txt"), Encoding.UTF8));
             _urlFactory = item =>
             {
                 if (item is ExternDocItem externItem)
@@ -55,11 +66,28 @@ namespace DefaultDocumentation.Writer
             };
         }
 
-        private static string ToLink(string url, string displayedName = null) => $"[{(displayedName ?? url).Prettify()}]({url} '{url}')";
+        private string Render<T>(T model)
+        {
+            TemplateContext context = new(model, _templateOptions);
 
-        private string GetLink(DocItem item, string displayedName = null) => $"[{displayedName ?? item.Name}]({GetUrl(item)} '{item.FullName}')";
+            return _template.Render(context);
+        }
 
-        private string GetLink(string id, string displayedName = null) => TryGetDocItem(id, out DocItem item) ? GetLink(item, displayedName) : $"[{(displayedName ?? id.Substring(2)).Prettify()}]({_urls.GetOrAdd(id, i => i.ToDotNetApiUrl())} '{id.Substring(2)}')";
+        private string GetLink(string name, string url, string tooltip) => Render(new
+        {
+            Link = new
+            {
+                Name = name,
+                Url = url,
+                Tooltip = tooltip
+            }
+        });
+
+        private string ToLink(string url, string name = null) => GetLink((name ?? url).Prettify(), url, url);
+
+        private string GetLink(DocItem item, string name = null) => GetLink(name ?? item.Name, GetUrl(item), item.FullName);
+
+        private string GetLink(string id, string name = null) => TryGetDocItem(id, out DocItem item) ? GetLink(item, name) : GetLink((name ?? id.Substring(2)).Prettify(), _urls.GetOrAdd(id, i => i.ToDotNetApiUrl()), id.Substring(2));
 
         private string GetLink(DocItem item, INamedElement element)
         {
@@ -612,13 +640,35 @@ namespace DefaultDocumentation.Writer
 
         protected override void WritePage(DirectoryInfo directory, DocItem item)
         {
+            IEnumerable<DocItem> GetParents(DocItem item)
+            {
+                while (item.Parent != null && item.Parent is not AssemblyDocItem)
+                {
+                    item = item.Parent;
+                    yield return item;
+                }
+            }
+
             _builder.Clear();
 
-            WriteHeader(item);
+            AssemblyDocItem assemblyItem = Items.OfType<AssemblyDocItem>().Single();
 
-            WriteItem(item);
+            File.WriteAllText(
+                Path.Combine(directory.FullName, GetFileName(item) + ".md"),
+                Render(new
+                {
+                    Header = new
+                    {
+                        AssemblyLink = HasOwnPage(assemblyItem) ? GetLink(assemblyItem) : null,
+                        ParentLinks = GetParents(item).Reverse().Select(i => GetLink(i)).ToArrayOrNull()
+                    }
+                }));
 
-            File.WriteAllText(Path.Combine(directory.FullName, GetFileName(item) + ".md"), _builder.ToString());
+            //WriteHeader(item);
+
+            //WriteItem(item);
+
+            //File.WriteAllText(Path.Combine(directory.FullName, GetFileName(item) + ".md"), _builder.ToString());
         }
     }
 }

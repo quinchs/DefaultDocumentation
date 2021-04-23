@@ -1,4 +1,5 @@
-﻿using NFluent;
+﻿using Fluid;
+using NFluent;
 using Xunit;
 
 namespace DefaultDocumentation.Helper
@@ -147,6 +148,44 @@ namespace Code
             string result = CodeRegion.Extract(NoEndRegion, "Foo");
 
             Check.That(result).IsNull();
+        }
+
+        [Fact]
+        public void FluiTest()
+        {
+            FluidParser parser = new();
+            TemplateOptions options = new TemplateOptions { MemberAccessStrategy = UnsafeMemberAccessStrategy.Instance };
+            IFluidTemplate template = parser.Parse(
+@"
+{%- if Model1 -%}
+{{ Model1.Name }}
+{%- endif -%}
+
+{%- if Model2 -%}
+{{ Model2.Name }}
+{%- endif -%}
+");
+
+            var model1 = new
+            {
+                Model1 = new
+                {
+                    Name = "hello"
+                }
+            };
+
+            var model2 = new
+            {
+                Model2 = new
+                {
+                    Name = "world"
+                }
+            };
+
+            Check.That(template.Render(new TemplateContext(model1, options))).IsEqualTo("hello");
+            Check.That(template.Render(new TemplateContext(model2, options))).IsEqualTo("world");
+            Check.That(template.Render(new TemplateContext(model1, options))).IsEqualTo("hello");
+            Check.That(template.Render(new TemplateContext(model2, options))).IsEqualTo("world");
         }
     }
 }

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DefaultDocumentation.Console": {
+      "commandName": "Project",
+      "commandLineArgs": "-a \"D:\\Projects\\DefaultEcs\\source\\DefaultEcs\\bin\\Release\\netstandard1.1\\DefaultEcs.dll\" -o \"D:\\Projects\\DefaultEcs\\documentation\\api\" -g Assembly Types Members -m Name"
+    }
+  }
+}
