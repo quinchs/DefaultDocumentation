@@ -22,23 +22,21 @@ namespace DefaultDocumentation.Writer
     internal sealed class MarkdownWriter : DocItemWriter
     {
         private readonly ConcurrentDictionary<string, string> _urls;
-        private readonly StringBuilder _builder;
-        private readonly Func<IFluidTemplate> _templateFactory;
         private readonly IFluidTemplate _template;
         private readonly TemplateOptions _templateOptions;
         private readonly Func<DocItem, string> _urlFactory;
+
+        private readonly StringBuilder _builder;
 
         public MarkdownWriter(Settings settings)
             : base(settings)
         {
             _urls = new ConcurrentDictionary<string, string>();
-            _builder = new StringBuilder();
-            _template = new FluidParser().Parse(File.ReadAllText(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "DefaultTemplate.txt"), Encoding.UTF8));
+            _template = new FluidParser().Parse(File.ReadAllText(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "DefaultTemplate.liquid"), Encoding.UTF8));
             _templateOptions = new TemplateOptions
             {
                 MemberAccessStrategy = new UnsafeMemberAccessStrategy()
             };
-            _templateFactory = () => new FluidParser().Parse(File.ReadAllText(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "DefaultTemplate.txt"), Encoding.UTF8));
             _urlFactory = item =>
             {
                 if (item is ExternDocItem externItem)
@@ -64,16 +62,13 @@ namespace DefaultDocumentation.Writer
 
                 return url;
             };
+
+            StringBuilderPool.Get(out _builder);
         }
 
-        private string Render<T>(T model)
-        {
-            TemplateContext context = new(model, _templateOptions);
+        private string Render<T>(T model) => _template.Render(new(model, _templateOptions));
 
-            return _template.Render(context);
-        }
-
-        private string GetLink(string name, string url, string tooltip) => Render(new
+        private string RenderLink(string name, string url, string tooltip) => Render(new
         {
             Link = new
             {
@@ -83,11 +78,56 @@ namespace DefaultDocumentation.Writer
             }
         });
 
-        private string ToLink(string url, string name = null) => GetLink((name ?? url).Prettify(), url, url);
+        private string RenderPara(string para) => Render(new { Para = para });
 
-        private string GetLink(DocItem item, string name = null) => GetLink(name ?? item.Name, GetUrl(item), item.FullName);
+        private string RenderCode(string language, string code) => Render(new
+        {
+            Code = new
+            {
+                Language = language,
+                Value = code
+            }
+        });
 
-        private string GetLink(string id, string name = null) => TryGetDocItem(id, out DocItem item) ? GetLink(item, name) : GetLink((name ?? id.Substring(2)).Prettify(), _urls.GetOrAdd(id, i => i.ToDotNetApiUrl()), id.Substring(2));
+        private string RenderC(string c) => Render(new { C = c });
+
+        private string RenderPage(DocItem item)
+        {
+            AssemblyDocItem assemblyItem = Items.OfType<AssemblyDocItem>().Single();
+
+            //var GetDocItem = (DocItem i) => new
+            //{
+
+            //};
+
+            return Render(new
+            {
+                Page = new
+                {
+                    AssemblyLink = HasOwnPage(assemblyItem) ? GetLink(assemblyItem) : null,
+                    ParentLinks = item.GetHierarchy().Skip(1).TakeWhile(i => i is not AssemblyDocItem).Reverse().Select(i => GetLink(i)).ToArrayOrNull()
+                },
+                DocItem = new
+                {
+                    RelativeUrl = HasOwnPage(item) ? null : GetUrl(item),
+                    Type = item.GetType().Name,
+                    item.FullName,
+                    item.LongName,
+                    item.Name,
+                    Symbol = item switch
+                    {
+                        TypeDocItem typeItem => typeItem.Type,
+
+                    }
+                }
+            });
+        }
+
+        private string ToLink(string url, string name = null) => RenderLink((name ?? url).Prettify(), url, url);
+
+        private string GetLink(DocItem item, string name = null) => RenderLink(name ?? item.Name, GetUrl(item), item.FullName);
+
+        private string GetLink(string id, string name = null) => TryGetDocItem(id, out DocItem item) ? GetLink(item, name) : RenderLink((name ?? id.Substring(2)).Prettify(), _urls.GetOrAdd(id, i => i.ToDotNetApiUrl()), id.Substring(2));
 
         private string GetLink(DocItem item, INamedElement element)
         {
@@ -144,16 +184,20 @@ namespace DefaultDocumentation.Writer
                 return;
             }
 
+            using IDisposable _ = StringBuilderPool.Get(out StringBuilder builder);
+
             if (title is not null)
             {
-                _builder.AppendLine(title);
+                builder.AppendLine(title);
             }
 
             int? startIndex = default;
             bool isNewLine = true;
 
-            StringBuilder WriteText(string text)
+            string HandleText(string text)
             {
+                using IDisposable _ = StringBuilderPool.Get(out StringBuilder builder);
+
                 string[] lines = text.Split('\n');
                 int currentLine = 0;
 
@@ -175,41 +219,41 @@ namespace DefaultDocumentation.Writer
                     string line = lines[currentLine];
                     if (isNewLine)
                     {
-                        _builder.Append(line, Math.Min(line.Length, startIndex ?? 0), Math.Max(0, line.Length - (startIndex ?? 0)));
+                        builder.Append(line, Math.Min(line.Length, startIndex ?? 0), Math.Max(0, line.Length - (startIndex ?? 0)));
                     }
                     else
                     {
-                        _builder.Append(line);
+                        builder.Append(line);
                     }
 
                     isNewLine = currentLine < lines.Length - 1;
                     if (isNewLine)
                     {
-                        _builder.AppendLine("  ");
+                        builder.AppendLine("  ");
                     }
                 }
 
-                return _builder;
+                return builder.ToString();
             }
 
-            StringBuilder WriteSee(XElement element)
+            string HandleSee(XElement element)
             {
                 string @ref = element.GetCRefAttribute();
                 if (@ref is not null)
                 {
-                    return _builder.Append(GetLink(@ref, element.Value.NullIfEmpty()));
+                    return GetLink(@ref, element.Value.NullIfEmpty());
                 }
 
                 @ref = element.GetHRefAttribute();
                 if (@ref is not null)
                 {
-                    return _builder.Append(ToLink(@ref, element.Value.NullIfEmpty()));
+                    return ToLink(@ref, element.Value.NullIfEmpty());
                 }
 
                 @ref = element.GetLangWordAttribute();
                 if (@ref is not null)
                 {
-                    return _builder.Append(ToLink(
+                    return ToLink(
                         @ref switch
                         {
                             "await" => "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/operators/await",
@@ -217,28 +261,20 @@ namespace DefaultDocumentation.Writer
                             "true" => "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/bool",
                             _ => $"https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/{@ref}"
                         },
-                        element.Value.NullIfEmpty() ?? @ref));
+                        element.Value.NullIfEmpty() ?? @ref);
                 }
 
-                return _builder;
+                return string.Empty;
             }
 
-            StringBuilder WritePara(XElement element)
+            string HandleCode(XElement element)
             {
-                _builder.AppendLine().AppendLine();
-                WriteNodes(element.Nodes());
-                return _builder.AppendLine().AppendLine();
-            }
-
-            StringBuilder WriteCode(XElement element)
-            {
-                _builder.Append("```").AppendLine(element.GetLanguageAttribute() ?? "csharp");
-
                 string source = element.GetSourceAttribute();
+                string code;
 
                 if (source is null)
                 {
-                    WriteText(element.Value);
+                    code = HandleText(element.Value);
                 }
                 else
                 {
@@ -246,70 +282,53 @@ namespace DefaultDocumentation.Writer
                     isNewLine = true;
                     startIndex = null;
 
-                    WriteText(GetCode(source, element.GetRegionAttribute()));
+                    code = HandleText(GetCode(source, element.GetRegionAttribute()));
 
                     startIndex = previousStartIndex;
                 }
 
-                return _builder.AppendLine("```");
+                return RenderCode(element.GetLanguageAttribute(), code);
             }
 
-            void WriteNodes(IEnumerable<XNode> nodes)
+            string HandleNodes(IEnumerable<XNode> nodes)
             {
+                using IDisposable _ = StringBuilderPool.Get(out StringBuilder builder);
+
                 foreach (XNode node in nodes)
                 {
-                    _ = node switch
+                    builder.Append(node switch
                     {
-                        XText text => WriteText(text.Value),
+                        XText text => HandleText(text.Value),
                         XElement element => element.Name.ToString() switch
                         {
-                            "see" => WriteSee(element),
-                            "seealso" => _builder,
-                            "typeparamref" => _builder.Append(item.TryGetTypeParameterDocItem(element.GetNameAttribute(), out TypeParameterDocItem typeParameter) ? GetLink(typeParameter) : element.GetNameAttribute()),
-                            "paramref" => _builder.Append(item.TryGetParameterDocItem(element.GetNameAttribute(), out ParameterDocItem parameter) ? GetLink(parameter) : element.GetNameAttribute()),
-                            "c" => _builder.Append('`').Append(element.Value).Append('`'),
-                            "code" => WriteCode(element),
-                            "para" => WritePara(element),
-                            _ => _builder.Append(element.ToString())
+                            "see" => HandleSee(element),
+                            "seealso" => string.Empty,
+                            "typeparamref" => item.TryGetTypeParameterDocItem(element.GetNameAttribute(), out TypeParameterDocItem typeParameter) ? GetLink(typeParameter) : element.GetNameAttribute(),
+                            "paramref" => item.TryGetParameterDocItem(element.GetNameAttribute(), out ParameterDocItem parameter) ? GetLink(parameter) : element.GetNameAttribute(),
+                            "c" => RenderC(element.Value),
+                            "code" => HandleCode(element),
+                            "para" => RenderPara(HandleNodes(element.Nodes())),
+                            _ => element.ToString()
                         },
                         _ => throw new Exception($"unhandled node type in summary {node.NodeType}")
-                    };
+                    });
 
                     if (node is XElement)
                     {
                         isNewLine = false;
                     }
                 }
+
+                return builder.ToString();
             }
 
-            WriteNodes(element.Nodes());
-            _builder.AppendLine();
+            _builder.AppendLine(HandleNodes(element.Nodes()));
 
             int builderLength = -1;
             while (_builder.Length != builderLength && _builder.Length > Environment.NewLine.Length * 2)
             {
                 builderLength = _builder.Length;
                 _builder.Replace(Environment.NewLine + Environment.NewLine, Environment.NewLine, builderLength - (Environment.NewLine.Length * 2), Environment.NewLine.Length * 2);
-            }
-        }
-
-        private void WriteHeader(DocItem item)
-        {
-            AssemblyDocItem assembly = Items.OfType<AssemblyDocItem>().Single();
-            if (HasOwnPage(assembly))
-            {
-                _builder.Append("#### ").AppendLine(GetLink(assembly));
-            }
-
-            Stack<DocItem> parents = new();
-            for (DocItem parent = item?.Parent; parent != assembly && parent != null; parent = parent.Parent)
-            {
-                parents.Push(parent);
-            }
-
-            if (parents.Count > 0)
-            {
-                _builder.Append("### ").AppendLine(string.Join(".", parents.Select(p => GetLink(p))));
             }
         }
 
@@ -640,31 +659,9 @@ namespace DefaultDocumentation.Writer
 
         protected override void WritePage(DirectoryInfo directory, DocItem item)
         {
-            IEnumerable<DocItem> GetParents(DocItem item)
-            {
-                while (item.Parent != null && item.Parent is not AssemblyDocItem)
-                {
-                    item = item.Parent;
-                    yield return item;
-                }
-            }
-
-            _builder.Clear();
-
-            AssemblyDocItem assemblyItem = Items.OfType<AssemblyDocItem>().Single();
-
             File.WriteAllText(
                 Path.Combine(directory.FullName, GetFileName(item) + ".md"),
-                Render(new
-                {
-                    Header = new
-                    {
-                        AssemblyLink = HasOwnPage(assemblyItem) ? GetLink(assemblyItem) : null,
-                        ParentLinks = GetParents(item).Reverse().Select(i => GetLink(i)).ToArrayOrNull()
-                    }
-                }));
-
-            //WriteHeader(item);
+                RenderPage(item));
 
             //WriteItem(item);
 

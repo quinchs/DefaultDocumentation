@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using DefaultDocumentation.Model;
 using DefaultDocumentation.Model.Parameter;
 
@@ -36,6 +37,15 @@ namespace DefaultDocumentation.Helper
             }
 
             return parameterDocItem != null;
+        }
+
+        public static IEnumerable<DocItem> GetHierarchy(this DocItem item)
+        {
+            while (item != null)
+            {
+                yield return item;
+                item = item.Parent;
+            }
         }
     }
 }

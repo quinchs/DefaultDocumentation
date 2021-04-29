@@ -30,7 +30,7 @@ namespace DefaultDocumentation.Writer
 
         protected bool TryGetDocItem(string id, out DocItem item) => _items.TryGetValue(id, out item);
 
-        protected string GetCode(string source, string region = null)
+        protected string GetCode(string source, string region)
         {
             if (!Path.IsPathRooted(source) && _settings.ProjectDirectory != null)
             {

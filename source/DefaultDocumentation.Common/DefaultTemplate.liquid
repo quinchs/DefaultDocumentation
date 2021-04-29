@@ -1,0 +1,70 @@
+﻿{%- if Link -%}[{{ Link.Name }}]({{ Link.Url }} '{{ Link.Tooltip }}'){%- endif -%}
+
+{%- if Para %}
+
+{{ Para }}
+
+{% endif -%}
+
+{%- if Code -%}```{% if Code.Language %}{{ Code.Language }}{% else %}csharp{% endif %}
+{{ Code.Value }}
+```
+{% endif -%}
+
+{%- if C -%}`{{ C }}`{%- endif -%}
+
+{%- if Page.AssemblyLink -%}
+#### {{ Page.AssemblyLink }}
+{%- endif -%}
+
+{%- if Page.ParentLinks %}
+### {{ Page.ParentLinks[0] }}
+	{%- for parentLink in Page.ParentLinks offset:1 -%}
+.{{ parentLink }}
+	{%- endfor -%}
+{%- endif -%}
+
+{%- if Page.DocItem -%}
+	{%- include 'DefaultTemplate' -%}
+{%- endif -%}
+
+{%- if DocItem -%}
+	{%- if DocItem.RelativeUrl %}
+<a name='{{ DocItem.RelativeUrl }}'></a>
+	{%- endif -%}
+
+	{%- case DocItem.Type -%}
+		{%- when "NamespaceDocItem" %}
+## {{ DocItem.Name }} Namespace
+		{%- when "ClassDocItem" %}
+## {{ DocItem.LongName }} Class
+		{%- when "DelegateDocItem" %}
+## {{ DocItem.LongName }} Delegate
+		{%- when "EnumDocItem" %}
+## {{ DocItem.LongName }} Enum
+		{%- when "InterfaceDocItem" %}
+## {{ DocItem.LongName }} Interface
+		{%- when "StructDocItem" %}
+## {{ DocItem.LongName }} Struct
+		{%- when "ConstructorDocItem" %}
+## {{ DocItem.LongName }} Constructor
+		{%- when "EventDocItem" %}
+## {{ DocItem.LongName }} Event
+		{%- when "FieldDocItem" %}
+## {{ DocItem.LongName }} Field
+		{%- when "MethodDocItem" %}
+## {{ DocItem.LongName }} Method
+		{%- when "OperatorDocItem" %}
+## {{ DocItem.LongName }} Operator
+		{%- when "PropertyDocItem" %}
+## {{ DocItem.LongName }} Property
+		{%- when "ExplicitInterfaceImplementationDocItem" %}
+## {{ DocItem.LongName }} {{ DocItem.Symbol.Kind }}
+		{%- when "EnumFieldDocItem" %}
+`{{ DocItem.Name }}` value  
+		{%- when "ParameterDocItem" %}
+`{{ DocItem.Name }}` link  
+		{%- when "TypeParameterDocItem" %}
+`{{ DocItem.Name }}`  
+	{% endcase %}
+{%- endif -%}

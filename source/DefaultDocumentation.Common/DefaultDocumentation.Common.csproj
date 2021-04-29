@@ -6,13 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="DefaultTemplate.txt">
+    <None Update="DefaultTemplate.liquid">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 
   <ItemGroup Label="Reference">
     <PackageReference Include="ICSharpCode.Decompiler" Version="6.2.1.6137" />
-    <PackageReference Include="Fluid.Core" Version="2.0.6" />
+    <PackageReference Include="Fluid.Core" Version="2.0.7" />
   </ItemGroup>
 </Project>
