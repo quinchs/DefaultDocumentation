@@ -24,6 +24,7 @@ namespace DefaultDocumentation.Internal
             GeneratedAccessModifiers generatedAccessModifiers,
             GeneratedPages generatedPages,
             bool includeUndocumentedItems,
+            bool searchCodeSourceProjectDir,
             string invalidCharReplacement,
             bool removeFileExtensionFromLinks,
             string linksOutputFile,
@@ -40,6 +41,7 @@ namespace DefaultDocumentation.Internal
             GeneratedAccessModifiers = generatedAccessModifiers == GeneratedAccessModifiers.Default ? _defaultGeneratedAccessModifiers : generatedAccessModifiers;
             GeneratedPages = generatedPages == GeneratedPages.Default ? _defaultGeneratedPages : generatedPages;
             IncludeUndocumentedItems = includeUndocumentedItems;
+            SearchCodeSourceProjectDir = searchCodeSourceProjectDir;
             InvalidCharReplacement = string.IsNullOrEmpty(invalidCharReplacement) ? "_" : invalidCharReplacement;
             RemoveFileExtensionFromLinks = removeFileExtensionFromLinks;
             LinksOutputFile = string.IsNullOrEmpty(linksOutputFile) ? null : new FileInfo(linksOutputFile);
@@ -100,6 +102,8 @@ namespace DefaultDocumentation.Internal
         public string InvalidCharReplacement { get; }
 
         public bool RemoveFileExtensionFromLinks { get; }
+
+        public bool SearchCodeSourceProjectDir { get; }
 
         public GeneratedPages GeneratedPages { get; }
 

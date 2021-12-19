@@ -48,7 +48,10 @@ namespace DefaultDocumentation
         /// Gets wether the file extension should be removed from the urls of the generated documentation pages.
         /// </summary>
         public bool RemoveFileExtensionFromLinks { get; }
-
+        /// <summary>
+        /// Gets wether the project directory should be used to back reference source tags in examples.
+        /// </summary>
+        public bool SearchCodeSourceProjectDir { get; }
         /// <summary>
         /// Gets the <see cref="DefaultDocumentation.GeneratedPages"/> flags stating which kind should have their own page and which should be inlined.
         /// </summary>

@@ -57,6 +57,7 @@ namespace DefaultDocumentation
             AddSetting(s => s.AssemblyPageName, string.IsNullOrEmpty, v => v);
             AddSetting(s => s.GeneratedAccessModifiers, v => v == GeneratedAccessModifiers.Default, v => v);
             AddSetting(s => s.IncludeUndocumentedItems, v => !v, v => v);
+            AddSetting(s => s.SearchCodeSourceProjectDir, v => !v, v => v);
             AddSetting(s => s.GeneratedPages, v => v == GeneratedPages.Default, v => v);
             AddSetting(s => s.InvalidCharReplacement, string.IsNullOrEmpty, v => v);
             AddSetting(s => s.RemoveFileExtensionFromLinks, v => !v, v => v);
@@ -99,6 +100,7 @@ namespace DefaultDocumentation
                 GetSetting<GeneratedAccessModifiers>(nameof(settings.GeneratedAccessModifiers)),
                 GetSetting<GeneratedPages>(nameof(settings.GeneratedPages)),
                 GetSetting<bool>(nameof(settings.IncludeUndocumentedItems)),
+                GetSetting<bool>(nameof(settings.SearchCodeSourceProjectDir)),
                 GetSetting<string>(nameof(settings.InvalidCharReplacement)),
                 GetSetting<bool>(nameof(settings.RemoveFileExtensionFromLinks)),
                 GetSetting<string>(nameof(settings.LinksOutputFilePath)),

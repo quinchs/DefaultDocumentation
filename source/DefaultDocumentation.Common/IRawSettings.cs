@@ -22,6 +22,8 @@ namespace DefaultDocumentation
 
         public bool IncludeUndocumentedItems { get; }
 
+        public bool SearchCodeSourceProjectDir { get; }
+
         public GeneratedPages GeneratedPages { get; }
 
         public string InvalidCharReplacement { get; }

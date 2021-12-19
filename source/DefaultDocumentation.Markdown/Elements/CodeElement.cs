@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using DefaultDocumentation.Api;
 using DefaultDocumentation.Markdown.Extensions;
@@ -11,7 +12,12 @@ namespace DefaultDocumentation.Markdown.Elements
     {
         private static string GetCode(ISettings settings, string source, string region = null)
         {
-            if (!Path.IsPathRooted(source) && settings.ProjectDirectory != null)
+            if (settings.SearchCodeSourceProjectDir)
+            {
+                string newSource = new Regex(@"((?>\.\.(?>\\|\/)).*?)").Replace(source, (_) => "");
+                source = Path.Combine(settings.ProjectDirectory.FullName, newSource);
+            }
+            else if (!Path.IsPathRooted(source) && settings.ProjectDirectory != null)
             {
                 source = Path.Combine(settings.ProjectDirectory.FullName, source);
             }

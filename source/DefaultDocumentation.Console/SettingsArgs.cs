@@ -65,6 +65,9 @@ namespace DefaultDocumentation
         [Option('e', nameof(ExternLinksFilePaths), Separator = '|', HelpText = "Links files to use for external documentation")]
         public IEnumerable<string> ExternLinksFilePaths { get; set; }
 
+        [Option('z', nameof(SearchCodeSourceProjectDir), HelpText = "Uses the project directory to look for source code in examples")]
+        public bool SearchCodeSourceProjectDir { get; set; }
+
         [Option(nameof(Plugins), Separator = '|', HelpText = "plugin files to use to create the documentation")]
         public IEnumerable<string> Plugins { get; set; }
 

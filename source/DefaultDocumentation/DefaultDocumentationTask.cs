@@ -33,6 +33,8 @@ namespace DefaultDocumentation
 
         public bool RemoveFileExtensionFromLinks { get; set; }
 
+        public bool SearchCodeSourceProjectDir { get; set; }
+
         public string LinksOutputFilePath { get; set; }
 
         public string LinksBaseUrl { get; set; }
